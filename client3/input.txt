@@ -1,0 +1,6 @@
+./share
+u3
+2
+u1
+anime.mkv
+5

@@ -175,7 +175,6 @@ def get_sharing_directory():
 
     return sharing_directory
 
-
 def peer_function(connection, address):
     """
     connect to a peer
@@ -184,6 +183,7 @@ def peer_function(connection, address):
     address : (IP_address, port)
     """
     global sharing_directory
+    global tqdm_index
 
     incoming_buffer = ""
 
@@ -205,6 +205,7 @@ def peer_function(connection, address):
             file_ = sharing_directory + "/" + fields[1]
 
             if os.path.isfile(file_):
+
                 # get the file size
                 file_size = os.path.getsize(file_)
 
@@ -212,13 +213,14 @@ def peer_function(connection, address):
 
                 file__ = open(file_, "rb")
 
-
-                file_buffer = ""
-                file_buffer = file__.read(1024)
-                while file_buffer:
-                    #print("sending: " + file_buffer.decode("utf8"))
-                    connection.send(file_buffer)
+                with tqdm(total=file_size, unit='KB', desc=f"{address[0]}:{address[1]}") as pbar:
+                    file_buffer = ""
                     file_buffer = file__.read(1024)
+                    while file_buffer:
+                        #print("sending: " + file_buffer.decode("utf8"))
+                        connection.send(file_buffer)
+                        file_buffer = file__.read(1024)
+                        pbar.update(len(file_buffer))
 
                 # cli_output
                 logging.info("file {} sent".format(file_))
@@ -314,7 +316,6 @@ def give_me(peer):
 
     fields = message.split()
     command = fields[0]
-    
 
     if command == "TAKE":
         file_size = int(fields[1])
@@ -425,7 +426,7 @@ def main():
             args=(listening_ip, listening_port, queue))
     # TODO
     # handle differently, terminate gracefully
-    listening_thread.daemon = True
+    listening_thread.daemon = False
     listening_thread.start()
 
     listening_ip, listening_port = queue.get()
@@ -464,7 +465,11 @@ def main():
         print("4: SHARE : specify the sharing directory")
         print("5: QUIT : exit the program")
 
-        option = input()
+        try:
+            option = input()
+        except EOFError:
+            break
+
         if option in ["1", "sendlist", "SENDLIST"]:
             send_message(server, "SENDLIST " + "\n\0")
 
@@ -498,6 +503,7 @@ def main():
             json_save(configuration_file, configuration)
 
         elif option in ["5", "quit", "QUIT"]:
+            listening_thread.join()
             sys.exit(0)
 
         else:

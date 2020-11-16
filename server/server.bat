@@ -1,0 +1,1 @@
+make & conda activate torrent && python "server.py"
