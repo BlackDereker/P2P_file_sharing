@@ -17,10 +17,10 @@ import socket
 import sys
 from threading import Thread
 
-from library.library import sigint_handler
-from library.library import json_load
-from library.library import json_save
-from library.library import send_message
+from library import sigint_handler
+from library import json_load
+from library import json_save
+from library import send_message
 
 
 #DEBUG = True
@@ -207,7 +207,7 @@ def client_function(connection, address):
         if len(incoming) == 0:
             break
         else:
-            incoming_buffer += incoming
+            incoming_buffer += incoming.decode("utf8")
 
         incoming_buffer, own_previous_command = converse(connection, address, incoming_buffer, own_previous_command)
 

@@ -29,7 +29,7 @@ def sigint_handler(signal, frame):
 
 def send_message(connection, message):
     try:
-        connection.sendall(message)
+        connection.sendall(message.encode("utf8"))
     except socket.error:
         logging.error("error, send_message")
         sys.exit(-1)
@@ -38,14 +38,14 @@ def send_message(connection, message):
 
 
 def json_load(json_file):
-    with open(json_file, "rb") as file_:
+    with open(json_file, "r") as file_:
         json_ = json.load(file_)
 
     return json_
 
 
 def json_save(json_file, json_):
-    with open(json_file, "wb+") as file_:
+    with open(json_file, "w+") as file_:
         json.dump(json_, file_, sort_keys=True, indent=4, separators=(",", ": "))
 
 
