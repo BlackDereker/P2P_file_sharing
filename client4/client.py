@@ -22,8 +22,9 @@ from library import sigint_handler
 from library import json_load
 from library import json_save
 from library import send_message
+from library import TqdmLoggingHandler
 
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 #DEBUG = True
 DEBUG = False
@@ -37,6 +38,8 @@ requested_file = ""
 
 
 signal.signal(signal.SIGINT, sigint_handler)
+
+
 
 
 def converse(server, incoming_buffer, own_previous_command):
@@ -183,7 +186,6 @@ def peer_function(connection, address):
     address : (IP_address, port)
     """
     global sharing_directory
-    global tqdm_index
 
     incoming_buffer = ""
 
@@ -213,17 +215,20 @@ def peer_function(connection, address):
 
                 file__ = open(file_, "rb")
 
-                with tqdm(total=file_size, unit='KB', desc=f"{address[0]}:{address[1]}") as pbar:
-                    file_buffer = ""
+                pbar = tqdm(total=file_size, unit='B', desc=f"{address[0]}:{address[1]}", dynamic_ncols=True, unit_scale=True)
+
+                file_buffer = ""
+                file_buffer = file__.read(1024)
+                while file_buffer:
+                    #print("sending: " + file_buffer.decode("utf8"))
+                    connection.send(file_buffer)
                     file_buffer = file__.read(1024)
-                    while file_buffer:
-                        #print("sending: " + file_buffer.decode("utf8"))
-                        connection.send(file_buffer)
-                        file_buffer = file__.read(1024)
-                        pbar.update(len(file_buffer))
+                    pbar.update(len(file_buffer))
+
+                pbar.close()
 
                 # cli_output
-                logging.info("file {} sent".format(file_))
+                #logging.info("file {} sent".format(file_))
 
                 file__.close()
             else:
@@ -306,34 +311,35 @@ def give_me(peer):
 
     # parse message
     while "\0" not in incoming_buffer:
-        incoming_buffer += peer.recv(4096).decode("utf8")
+        incoming_buffer += peer.recv(1024).decode("utf8")
 
     index = incoming_buffer.index("\0")
     message = incoming_buffer[0:index-1]
     incoming_buffer = incoming_buffer[index+1:]
 
-    logging.info("message received: " + message)
+    logging.info("message received: " + message, )
 
     fields = message.split()
     command = fields[0]
 
     if command == "TAKE":
         file_size = int(fields[1])
-        incoming_buffer = bytearray()
         peer.settimeout(5.0)
+        path = sharing_directory + "/" + requested_file
         # get the file
-        with tqdm(total=file_size, unit='KB', position=0) as pbar:
+
+        file_to_save = open(path, "wb+")
+
+        with tqdm(total=file_size, unit='B', position=0, unit_scale=True, dynamic_ncols=True) as pbar:
             while True:
                 try:
                     data = peer.recv(4096)
                 except Exception:
                     break
-                incoming_buffer.extend(data)
+                file_to_save.write(data)
                 pbar.update(len(data))
                 #logging.info("received: " + incoming_buffer)
-
-        file_to_save = open(sharing_directory + "/" + requested_file, "wb")
-        file_to_save.write(incoming_buffer)
+        
         file_to_save.close()
 
         logging.info("file {} received".format(requested_file))
@@ -362,7 +368,7 @@ def main():
             format="[%(levelname)s] (%(threadName)s) %(message)s",
             filename="client.log",
             filemode="w")
-    console = logging.StreamHandler()
+    console = TqdmLoggingHandler()
     if DEBUG:
         # set the console logging level to debug
         console.setLevel(logging.DEBUG)
