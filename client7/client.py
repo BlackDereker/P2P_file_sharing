@@ -26,6 +26,8 @@ from library import TqdmLoggingHandler
 
 from tqdm.auto import tqdm
 
+from argparse import ArgumentParser
+
 #DEBUG = True
 DEBUG = False
 
@@ -363,6 +365,11 @@ def main():
     global full_list_of_files
     global sharing_directory
 
+    parser = ArgumentParser()
+    parser.add_argument("--no_daemon", action="store_true")
+
+    args = parser.parse_args()
+
     # logging configuration
     logging.basicConfig(level=logging.DEBUG,
             format="[%(levelname)s] (%(threadName)s) %(message)s",
@@ -432,7 +439,7 @@ def main():
             args=(listening_ip, listening_port, queue))
     # TODO
     # handle differently, terminate gracefully
-    listening_thread.daemon = False
+    listening_thread.daemon = not args.no_daemon
     listening_thread.start()
 
     listening_ip, listening_port = queue.get()

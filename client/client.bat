@@ -1,1 +1,1 @@
-make & conda activate torrent && python client.py < "input.txt"
+make & conda activate torrent && python client.py --no_daemon < "input.txt"
